@@ -11,7 +11,7 @@ Player template for **Battle of Code** — a multiplayer territory-capture game 
 - Three small `tools/` scripts that register you with the game server.
 - Docs explaining exactly what the wire format and auth look like.
 
-Nothing here phones home, nothing here is obfuscated. The full registration is 30 lines of REST you can run by hand. We also ship a script that does it for you, but you can — and should, the first time — do it step by step so you see what's happening.
+Nothing here phones home, nothing here is obfuscated. Each setup step has a one-command script form (the path of least resistance) **and** a hand-written form so you can verify it yourself. Use the script the first time. Read the `OR by hand` block whenever you want to know what the script is actually doing.
 
 ---
 
@@ -27,9 +27,7 @@ That's the whole trust model. No password, no JWT, no cookie. Every game session
 
 ---
 
-## Quickstart — manual, step by step
-
-Do it once by hand. After that the script does the same calls.
+## Quickstart
 
 Replace `<login>` with your GitHub login everywhere.
 
@@ -65,9 +63,21 @@ $EDITOR .env
 
 Set `USERNAME=<login>`. Tweak `BOC_AUTH_HOST` / `BOC_GAME_HOST` if the server isn't on `localhost`.
 
-### 4. Generate an Ed25519 keypair — by hand
+### 4. Generate an Ed25519 keypair
 
-You can do it with Python one-liner (no extra tool needed):
+You need two files in `keys/`: a private `.key` (32 raw bytes, mode `0600`, **never commit**) and a public `.pub` (hex, 64 chars, **safe to commit**).
+
+#### 4.1. With the script (recommended)
+
+```bash
+python3 tools/keygen.py
+```
+
+This creates `keys/<login>.key` and `keys/<login>.pub`. Idempotent — if the private key already exists, it's reused and the public key is regenerated from it.
+
+#### 4.2. OR by hand
+
+Same two files, no extra tool:
 
 ```bash
 python3 - <<'PY'
@@ -93,12 +103,7 @@ print("public :", f"keys/{login}.pub", pub.hex())
 PY
 ```
 
-What you got:
-
-- `keys/<login>.key` — 32 raw bytes, mode `0600`. **Git-ignored.** Never commit this.
-- `keys/<login>.pub` — hex public key, one line + comment. Safe to commit.
-
-> The same thing in script form: `python3 tools/keygen.py`. It's the literal one-liner above with a CLI wrapper.
+That's literally what `tools/keygen.py` does — read [`tools/keygen.py`](tools/keygen.py) (~70 LOC) if you want to verify line-by-line.
 
 ### 5. Push the public key to your branch
 
@@ -117,28 +122,39 @@ https://raw.githubusercontent.com/<login>/bocbot/<login>/keys/<login>.pub
 
 You can `curl` that URL yourself to check it's reachable.
 
-### 6. Sign up — by hand
+### 6. Sign up with the server
 
-Two REST calls.
+Two REST calls in total: the server hands you a 60-second nonce, you sign it, you send the signature back. After this the server has `(username, pubkey)` cached in SQLite and never needs to touch GitHub for you again.
 
-**Call 1: request a challenge.** The server fetches your `key.pub` from GitHub, stores `(pubkey, nonce)` in Redis with a 60-second TTL, and returns the nonce.
+#### 6.1. With the script (recommended)
 
 ```bash
+python3 tools/signup.py
+```
+
+The script:
+
+1. Confirms `USERNAME` from `.env`.
+2. Generates the keypair if step 4 hasn't run yet (idempotent).
+3. **Pauses** and reprints the four `git` commands from step 5 — press Enter once the public key is pushed.
+4. Calls `/api/auth/signup`, signs the nonce, calls `/api/auth/signup/verify`.
+
+Source is ~200 LOC at [`tools/signup.py`](tools/signup.py). No hidden logic.
+
+#### 6.2. OR by hand
+
+Two `curl` calls; sign the nonce with the private key on disk:
+
+```bash
+# Call 1 — request a challenge. Server fetches your key.pub from GitHub,
+# stores (pubkey, nonce) in Redis (TTL 60 s), returns the nonce.
 curl -s -X POST "http://${BOC_AUTH_HOST:-127.0.0.1}:${BOC_AUTH_PORT:-8000}/api/auth/signup" \
      -H 'Content-Type: application/json' \
      -d "{\"username\":\"$USERNAME\"}"
-```
+# -> {"status":"challenge","nonce":"<HEX>","ttl":60}
 
-Response:
-
-```json
-{"status":"challenge","nonce":"0f1e2d3c4b5a69788796a5b4c3d2e1f0","ttl":60}
-```
-
-**Call 2: sign the nonce and verify.** The nonce is hex. Decode it to bytes, sign, hex-encode the signature, send back.
-
-```bash
-NONCE=0f1e2d3c4b5a69788796a5b4c3d2e1f0   # from the previous response
+# Call 2 — sign the nonce (raw bytes, not the hex string) and verify.
+NONCE=<paste from above>
 SIG=$(python3 - <<PY
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 key = Ed25519PrivateKey.from_private_bytes(open(f"keys/$USERNAME.key","rb").read())
@@ -148,19 +164,12 @@ PY
 curl -s -X POST "http://${BOC_AUTH_HOST:-127.0.0.1}:${BOC_AUTH_PORT:-8000}/api/auth/signup/verify" \
      -H 'Content-Type: application/json' \
      -d "{\"username\":\"$USERNAME\",\"sig\":\"$SIG\"}"
+# -> {"status":"ok","username":"<login>"}
 ```
 
-Response:
+Error codes, the full failure-mode table, and the security rationale are in [`docs/AUTH_EN.md`](docs/AUTH_EN.md).
 
-```json
-{"status":"ok","username":"<login>"}
-```
-
-The server now has `(username, pubkey)` cached in its SQLite auth store. It won't talk to GitHub for you again.
-
-> Same thing in script form: `python3 tools/signup.py`. It prints exactly which call it's making at each step. See [`docs/AUTH_EN.md`](docs/AUTH_EN.md) for the full reference.
-
-### 7. Verify you can play
+### 7. Verify and play
 
 Smoke-test the game WebSocket:
 
@@ -168,7 +177,7 @@ Smoke-test the game WebSocket:
 python3 tools/login.py
 ```
 
-This opens `ws://<host>:5555/`, sends a signed `hello` frame, waits for `auth_ok` + `welcome`, sends one `ping`, prints `pong`, closes. If you see two lines of green output you're in.
+This opens `ws://<host>:5555/`, sends a signed `hello` frame, waits for `auth_ok` + `welcome`, sends one `ping`, prints `pong`, closes. Two lines of green output means you're in.
 
 Now actually play:
 
@@ -183,32 +192,6 @@ If you want to come back to `main` to work on the bot:
 ```bash
 git checkout main
 ```
-
-That's the whole flow. You did it by hand once. Next time the script does it.
-
----
-
-## Quickstart — scripted
-
-If you just want to play and already understand what's happening:
-
-```bash
-gh repo fork battleofcode/bocbot --clone --remote
-cd bocbot
-python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-cp .env.example .env && $EDITOR .env       # set USERNAME=<login>
-python3 tools/signup.py                    # keygen + REST signup, prompts when ready to push
-./play.sh
-```
-
-`tools/signup.py`:
-
-1. Copies `.env.example` → `.env` if missing, confirms `USERNAME`.
-2. Generates the keypair (idempotent — if `keys/<login>.key` exists, reuses it).
-3. **Pauses** and prints the four `git` commands you need to push the public key. Press Enter when you've pushed.
-4. Calls `/api/auth/signup`, signs the nonce, calls `/api/auth/signup/verify`.
-
-Read the source — it's 200 lines.
 
 ---
 
@@ -246,10 +229,9 @@ python3 client/client.py -f 1
 | `tools/keygen.py`      | generate Ed25519 keypair into `keys/<u>.key` + `keys/<u>.pub`              |
 | `tools/signup.py`      | end-to-end signup against the REST API                                     |
 | `tools/login.py`       | WebSocket smoke-test (hello → ping → pong)                                 |
-| `docs/AUTH_EN.md`         | auth deep dive (REST signup, signing rules, failure modes)                 |
-| `docs/API_EN.md`          | wire protocol (WebSocket frames, state messages, events)                   |
-| `docs/RULES_EN.md`        | game rules (zones, trails, capture, death conditions)                      |
-| `docs/EXAMPLES_EN.md`     | bot decision-making cookbook                                               |
+| `docs/AUTH_EN.md`      | auth deep dive (REST signup, signing rules, failure modes)                 |
+| `docs/API_EN.md`       | wire protocol (WebSocket frames, state messages, events, `state` examples) |
+| `docs/RULES_EN.md`     | game rules (zones, trails, capture, death, anti-patterns)                  |
 | `keys/<u>.pub`         | your **public** key (committed on the `<u>` branch of your fork)           |
 | `keys/<u>.key`         | your **private** key (git-ignored, mode 0600)                              |
 
@@ -257,7 +239,7 @@ python3 client/client.py -f 1
 
 ## How registration works (summary)
 
-1. You generate an Ed25519 keypair (`tools/keygen.py` or the Python one-liner above).
+1. You generate an Ed25519 keypair (step 4 above).
 2. Private key stays in `keys/<your-login>.key` (git-ignored, mode `0600`).
 3. Public key is committed as `keys/<your-login>.pub` on a branch named after your GitHub login.
 4. `tools/signup.py` (or two `curl` calls) tells the server your username; the server downloads the public key from `keys/<login>.pub` on your `<login>` branch and issues a short-lived nonce.
@@ -268,8 +250,8 @@ python3 client/client.py -f 1
 
 Deep references:
 - [`docs/AUTH_EN.md`](docs/AUTH_EN.md) — the auth flow, error codes, security notes
-- [`docs/API_EN.md`](docs/API_EN.md) — the wire format (REST + WebSocket)
-- [`docs/RULES_EN.md`](docs/RULES_EN.md) — game mechanics
+- [`docs/API_EN.md`](docs/API_EN.md) — the wire format (REST + WebSocket) and `state` consumption examples
+- [`docs/RULES_EN.md`](docs/RULES_EN.md) — game mechanics and anti-patterns
 
 ---
 
@@ -277,9 +259,8 @@ Deep references:
 
 Open `bot.py`. The entire bot is one file. The only function you need to touch is `decide(state)` at the top.
 
-- Read [`docs/RULES_EN.md`](docs/RULES_EN.md) for what wins.
-- Read [`docs/API_EN.md`](docs/API_EN.md) for the shape of `state` (it's just a JSON dict).
-- Read [`docs/EXAMPLES_EN.md`](docs/EXAMPLES_EN.md) for the recipe book (wall avoidance, hunting, distance metrics).
+- Read [`docs/RULES_EN.md`](docs/RULES_EN.md) for what wins and which moves kill you.
+- Read [`docs/API_EN.md`](docs/API_EN.md) for the shape of `state` (it's just a JSON dict) and short snippets showing how to consume it.
 
 `bot.go` and `bot.js` are placeholders that print "not implemented yet" — if you want to play in Go or Node, port `bot.py` over. The protocol is ~80 lines of real logic; everything else is `decide()` and reconnect plumbing.
 

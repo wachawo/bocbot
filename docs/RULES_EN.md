@@ -21,13 +21,7 @@ This document is the single source of truth for **game mechanics**: the map, how
 
 ## 2. Player and movement
 
-- Each player has a position `(x, y)`, a direction `dir ∈ {"W","A","S","D","N"}`, a pid, a username, and a colour.
-- Movement keys:
-  - `W` → `y - 1` (up)
-  - `S` → `y + 1` (down)
-  - `A` → `x - 1` (left)
-  - `D` → `x + 1` (right)
-  - `N` → no direction yet (the spawn default, until the player chooses)
+- Each player has a position `(x, y)`, a direction (one of the five protocol values `W`/`A`/`S`/`D`/`N` — see [API.md §4](API_EN.md) for the wire format and the [keyboard table in the top-level README](../README.md#playing-manually) for the human controls), a pid, a username, and a colour.
 - Movement speed is `SPEED` cells/second (default 5.0). The server ticks at `TICK_RATE = 20 Hz` and the player advances one cell every `1/SPEED` seconds.
 - **90°-only turns.** Reversing direction (180°) is forbidden — the server silently drops the command.
 - **Turn cooldown.** After each successful turn the player must travel at least one cell before turning again.
@@ -158,16 +152,27 @@ You can write a bot that tries to do any of the following, but the server will s
 
 ---
 
-## 13. Cheat sheet for `decide(state)`
+## 13. Anti-patterns and rules-of-thumb
 
-When writing `bot.py`'s `decide(state)`, these are the rules-of-thumb most often relevant:
+What to avoid and what to lean on when writing `decide(state)`. These all follow from the rules above; they're collected here because each one corresponds to a specific cause of death or a specific lost opportunity.
+
+**Survival**
 
 - Your zone is safe footing. Your trail outside your zone is exposure.
-- Long trails are exponentially riskier — they expose more cells for an enemy to cut.
+- Long trails are exponentially riskier — every extra cell is one more place an enemy can cut you.
 - Close loops back through your own zone as soon as feasible.
+- **`trapped_in_zone` is the most-missed death.** Do not lay an entire trail inside a single enemy zone, even briefly. Walk along the *edge* of the enemy zone, or thread through several different zones, but never a single one (see Section 7).
+- Don't try to outrun an enemy who is closer to your zone-edge than you are. Speed is the same for everyone — they'll get there first and cut you off. Turn into a different vector.
+
+**Offence**
+
 - Killing an enemy: step on **any cell** of their trail. You don't need to chase the head.
-- Avoid being chased into your own zone if the enemy is closer to your zone's edge than you are — they'll get there first and cut you off.
-- `trapped_in_zone` is the most-missed death: do not lay an entire trail inside a single enemy zone, even briefly.
+- A player is killable only when `trail_len > 0` (their head is off their own zone). In their own zone they're untouchable.
+
+**Pacing**
+
+- Don't react to every `state` frame. State arrives at 10 Hz; the 1-tick turn-cooldown means the server rejects most rapid direction flips. Decide a destination, then commit to it until reached or invalidated.
+- The captured-cells delta is your only way to update memory outside the live view window without revisiting — apply it as soon as the event arrives (see Section 5 and [API.md](API_EN.md) § 3).
 
 ---
 

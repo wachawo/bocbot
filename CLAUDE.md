@@ -11,7 +11,7 @@ This is a **player template** for Battle of Code. After fork + signup via `tools
   - `signup.py` — interactive signup: ensure `.env`, generate keys, prompt for the GitHub push, then call REST `/api/auth/signup` + `/api/auth/signup/verify`.
   - `login.py` — WebSocket smoke-test (hello → auth_ok → welcome → ping/pong).
 - **Interactive CLI player**: `client/`. Rich UI, WSAD. Same auth as `bot.py` (signed hello). Launch via `./play.sh`.
-- **Docs**: `docs/RULES.md` (game), `docs/AUTH.md` (REST signup flow), `docs/API.md` (WebSocket wire format), `docs/EXAMPLES.md` (decision-making cookbook). Translations of the top-level README live in `docs/README_<LANG>.md`.
+- **Docs**: `docs/RULES_EN.md` (game rules + anti-patterns), `docs/AUTH_EN.md` (REST signup flow), `docs/API_EN.md` (WebSocket wire format + `state` consumption snippets). Russian mirror at `docs/{RULES,AUTH,API}_RU.md`. Top-level README has its Russian sibling at `docs/README_RU.md`. There is no `EXAMPLES.md` — bot-strategy snippets are inside `API_*.md` § 9, anti-patterns inside `RULES_*.md` § 13.
 - **Scripts at root**: `play.sh` (launches `client/client.py`), `validate.sh` (legacy curl check against a future `/api/validate` — keep until that endpoint exists or the script gets retired).
 
 ## When the user says "improve my bot"
@@ -56,7 +56,7 @@ There is no token, no JWT, no cookie. Every connect is a fresh signed hello.
 
 | Ask                              | Where you work                                                  |
 |----------------------------------|-----------------------------------------------------------------|
-| "teach my bot to hunt"           | `bot.py`, expand `decide()` — read `docs/EXAMPLES.md` first     |
+| "teach my bot to hunt"           | `bot.py`, expand `decide()` — read `docs/API_EN.md` § 9 + `docs/RULES_EN.md` § 13 first |
 | "log every decision to a CSV"    | `bot.py`, open a file once at module scope, write inside `decide()` |
 | "add a unit test for decide()"   | new `test_bot.py` at repo root (no framework wired — `pytest`)  |
 | "port to Go" / "port to Node"    | replace the stub in `bot.go` / `bot.js`, mirror `bot.py`'s shape |

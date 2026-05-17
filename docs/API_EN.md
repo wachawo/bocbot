@@ -267,7 +267,91 @@ If the server adds new fields, clients should ignore unknown ones. If the server
 
 ---
 
-## 9. References
+## 9. Code examples — consuming `state`
+
+Short patterns showing how a bot reads `state` (the dict described in § 3). All snippets assume `decide(state)` returns one of `"W" | "A" | "S" | "D" | "N"` and runs ~10 times per second. Keep it fast: no file I/O, no network, no slow imports.
+
+```python
+DELTAS = {"W": (0, -1), "S": (0, 1), "A": (-1, 0), "D": (1, 0)}
+```
+
+### Avoiding the map edge
+
+The next step lands at `(me.x + dx, me.y + dy)`. If that cell is outside `[0, map_w) × [0, map_h)` you die with `reason="out_of_bounds"`. `state["map_w"]` and `state["map_h"]` come from the `welcome` frame your wrapper cached before the first `state`.
+
+```python
+def decide(state):
+    me, w, h = state["me"], state["map_w"], state["map_h"]
+    cur = me["dir"]
+    dx, dy = DELTAS.get(cur, (0, 0))
+    if 0 <= me["x"] + dx < w and 0 <= me["y"] + dy < h:
+        return cur
+    for d, (dx, dy) in DELTAS.items():
+        if 0 <= me["x"] + dx < w and 0 <= me["y"] + dy < h:
+            return d
+    return "N"
+```
+
+### Stepping on an enemy trail
+
+`state["view"].trail` is a 2D array indexed `[ry][rx]` over the view window. Each cell is the pid of the trail owner (or `0`). Stepping onto any non-zero, non-self cell kills that player.
+
+```python
+def decide(state):
+    me, view = state["me"], state["view"]
+    trail = view["trail"]
+    h, w = len(trail), len(trail[0])
+    for d, (dx, dy) in DELTAS.items():
+        rx = me["x"] - view["x0"] + dx
+        ry = me["y"] - view["y0"] + dy
+        if 0 <= rx < w and 0 <= ry < h:
+            owner = trail[ry][rx]
+            if owner != 0 and owner != me["id"]:
+                return d
+    return me["dir"] or "D"
+```
+
+### Reading the leaderboard
+
+`state["scores"]` arrives roughly every 5 seconds. In between, the field is absent (or the same cached object). Each entry has `pid`, `name`, `area`, `kills`, `deaths`.
+
+```python
+def top_rival(state, me_pid):
+    scores = state.get("scores") or []
+    others = [s for s in scores if s["pid"] != me_pid]
+    if not others:
+        return None
+    others.sort(key=lambda s: -s["area"])
+    return others[0]
+```
+
+### Applying the `captured` delta
+
+The `captured` event (see § 3) lists every cell that just flipped to your zone. Apply it to your fog-of-war memory immediately — without this delta the cells outside the live view would stay un-recoloured until the next time you walk over them.
+
+```python
+def apply_captured(memory, event, my_pid):
+    for x, y in event["cells"]:
+        memory.zone[y * memory.w + x] = my_pid
+        memory.trail[y * memory.w + x] = 0
+```
+
+### Distance metrics
+
+- **Manhattan** (`abs(dx) + abs(dy)`) — cheap, ignores obstacles. Use it for "is this player nearby" / "which of these is closer".
+- **Chebyshev** (`max(abs(dx), abs(dy))`) — matches the square view window centred on the player.
+- **BFS over the grid** — only when reachable distance matters (e.g. routing around an enemy zone). Keep BFS inside the view window unless you genuinely need long-range reachability — full-map BFS over 786 K cells is not cheap at 10 Hz.
+
+```python
+def manhattan(ax, ay, bx, by):
+    return abs(ax - bx) + abs(ay - by)
+```
+
+For when-to-come-home and other strategy heuristics, see [RULES.md](RULES_EN.md) § 13 (anti-patterns and rules-of-thumb).
+
+---
+
+## 10. References
 
 - [`tools/login.py`](../tools/login.py) — minimum viable client (hello → ping → pong → close).
 - [`client/client.py`](../client/client.py) — full Rich-UI player.

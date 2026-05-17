@@ -3,6 +3,7 @@
 """Rich-based renderer for Battle of Code: header + map + dashboard + footer."""
 
 import time
+from array import array
 from typing import Any, Deque, Dict, List, Optional, Tuple
 from collections import deque
 
@@ -132,19 +133,26 @@ class MemoryMap:
     def __init__(self) -> None:
         self.map_w: int = 0
         self.map_h: int = 0
-        self.zone: List[int] = []
-        self.trail: List[int] = []
+        self.zone: array = array("i")
+        self.trail: array = array("i")
         self.seen: bytearray = bytearray()
 
     def resize(self, map_w: int, map_h: int) -> None:
         n = map_w * map_h
         self.map_w = map_w
         self.map_h = map_h
-        self.zone = [0] * n
-        self.trail = [0] * n
+        self.zone = array("i", [0]) * n if n > 0 else array("i")
+        self.trail = array("i", [0]) * n if n > 0 else array("i")
         self.seen = bytearray(n)
 
     def update_from_view(self, view: Dict[str, Any]) -> None:
+        """Apply the server's live view rectangle to fog memory.
+
+        Per-row slice assignment into ``array.array('i')`` storage —
+        substantially cheaper than the per-cell Python loop the old
+        implementation used (fog at 123×123 × 10 Hz × 3 fields ≈ half a
+        million per-cell writes per second).
+        """
         if self.map_w == 0:
             return
         x0 = int(view.get("x0", 0))
@@ -153,22 +161,42 @@ class MemoryMap:
         h = int(view.get("h", 0))
         zone_rows: List[List[int]] = view.get("zone") or []
         trail_rows: List[List[int]] = view.get("trail") or []
+        mw = self.map_w
+        mh = self.map_h
+        # In-map x range of this row, in world coordinates and in row-local indices.
+        xa = max(0, x0)
+        xb = min(mw, x0 + w)
+        if xa >= xb:
+            return
+        ra = xa - x0
+        rb_world = xb - x0
+        span = xb - xa
+        ones = b"\x01" * span
         for vy in range(h):
             y = y0 + vy
-            if y < 0 or y >= self.map_h:
+            if y < 0 or y >= mh:
                 continue
-            zrow = zone_rows[vy] if vy < len(zone_rows) else []
+            if vy >= len(zone_rows):
+                break
+            zrow = zone_rows[vy]
             trow = trail_rows[vy] if vy < len(trail_rows) else []
-            base = y * self.map_w
-            for vx in range(w):
-                x = x0 + vx
-                if x < 0 or x >= self.map_w:
-                    continue
-                z = zrow[vx] if vx < len(zrow) else 0
-                t = trow[vx] if vx < len(trow) else 0
-                self.zone[base + x] = z
-                self.trail[base + x] = t
-                self.seen[base + x] = 1
+            base = y * mw
+            # If the server row is shorter than the requested width, pad
+            # locally so the slice always matches `span`. Out-of-map cells
+            # use the server's -1 marker, harmless here since they sit at
+            # x positions we've already clipped out via [xa..xb).
+            rb = min(rb_world, len(zrow))
+            self.zone[base + xa : base + xa + (rb - ra)] = zrow[ra:rb]
+            if rb < rb_world:
+                # Pad the tail with zeros if the row was short.
+                tail = rb_world - rb
+                self.zone[base + xa + (rb - ra) : base + xb] = array("i", [0] * tail)
+            t_rb = min(rb_world, len(trow))
+            self.trail[base + xa : base + xa + (t_rb - ra)] = trow[ra:t_rb]
+            if t_rb < rb_world:
+                tail = rb_world - t_rb
+                self.trail[base + xa + (t_rb - ra) : base + xb] = array("i", [0] * tail)
+            self.seen[base + xa : base + xb] = ones
 
     def update_from_fog(self, fog: Dict[str, Any]) -> None:
         """Apply the server's wider context window (state.fog).
@@ -181,6 +209,11 @@ class MemoryMap:
         from the server; trail is authoritative for own-trail and zero
         elsewhere. Apply BEFORE ``update_from_view`` so that for cells
         in the live view the richer (full-trail) view data wins.
+
+        Uses row-slice assignment into ``array.array('i')`` for speed,
+        same approach as ``update_from_view`` above. Out-of-map cells
+        (server emits ``-1``) sit at x positions already clipped by the
+        ``[xa..xb)`` mask, so they never reach memory.
         """
         if self.map_w == 0:
             return
@@ -192,6 +225,14 @@ class MemoryMap:
         trail_rows: List[List[int]] = fog.get("trail") or []
         mw = self.map_w
         mh = self.map_h
+        xa = max(0, x0)
+        xb = min(mw, x0 + w)
+        if xa >= xb:
+            return
+        ra = xa - x0
+        rb_world = xb - x0
+        span = xb - xa
+        ones = b"\x01" * span
         for ry in range(h):
             wy = y0 + ry
             if wy < 0 or wy >= mh:
@@ -201,16 +242,17 @@ class MemoryMap:
             zrow = zone_rows[ry]
             trow = trail_rows[ry] if ry < len(trail_rows) else []
             base = wy * mw
-            for rx in range(min(w, len(zrow))):
-                wx = x0 + rx
-                if wx < 0 or wx >= mw:
-                    continue
-                z = zrow[rx]
-                if z < 0:                       # out-of-map marker
-                    continue
-                self.zone[base + wx] = z
-                self.trail[base + wx] = trow[rx] if rx < len(trow) else 0
-                self.seen[base + wx] = 1
+            rb = min(rb_world, len(zrow))
+            self.zone[base + xa : base + xa + (rb - ra)] = zrow[ra:rb]
+            if rb < rb_world:
+                tail = rb_world - rb
+                self.zone[base + xa + (rb - ra) : base + xb] = array("i", [0] * tail)
+            t_rb = min(rb_world, len(trow))
+            self.trail[base + xa : base + xa + (t_rb - ra)] = trow[ra:t_rb]
+            if t_rb < rb_world:
+                tail = rb_world - t_rb
+                self.trail[base + xa + (t_rb - ra) : base + xb] = array("i", [0] * tail)
+            self.seen[base + xa : base + xb] = ones
 
     def commit_capture(self, pid: int, cells: Optional[List[Any]] = None) -> None:
         """Apply a capture delta to local memory.

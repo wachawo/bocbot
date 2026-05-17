@@ -711,17 +711,21 @@ def build_map(
     # (0, 0) is the centre of the world map. Y labels are prepended to
     # each map row inline (Rich's Table.grid silently truncated a
     # separate column to "…" when the map cell dominated the row); the
-    # X label is appended as the final row.
-    Y_TICK = 5
-    X_TICK = 10
+    # X label is appended as the final row. Labels appear at world
+    # positions where the displayed coordinate is a multiple of TICK —
+    # anchored to the map, not to the visible window, so they slide
+    # under the player as they move and the values stay round.
+    TICK = 10
     LABEL_W = 5            # max " -384" / "+1000" width
     sep = " "              # 1-char gap between Y label and map content
+    half_w = map_w // 2 if map_w > 0 else 0
+    half_h = map_h // 2 if map_h > 0 else 0
     labelled_rows: List[Text] = []
     for r_idx, row in enumerate(rows):
         wy_world = win_y0 + r_idx * pack_y
-        wy = wy_world - (map_h // 2 if map_h > 0 else 0)
+        wy = wy_world - half_h
         prefix = Text()
-        if r_idx % Y_TICK == 0:
+        if wy % TICK == 0:
             prefix.append(f"{wy:+{LABEL_W}d}", style="bright_blue")
         else:
             prefix.append(" " * LABEL_W)
@@ -733,15 +737,26 @@ def build_map(
 
     char_cols = max(1, win_w // pack_x)
     x_label = Text(" " * (LABEL_W + len(sep)))   # align under the map content
-    for c in range(char_cols):
+    # Walk by logical column. Emit a label when the displayed x is divisible
+    # by TICK; consume cell_w screen chars per logical column. Each label
+    # string takes ``len(s)`` screen chars; pad with spaces to the next
+    # logical-column boundary so subsequent ticks line up under the map.
+    c = 0
+    while c < char_cols:
         wx_world = win_x0 + c * pack_x
-        wx = wx_world - (map_w // 2 if map_w > 0 else 0)
-        if c % X_TICK == 0:
+        wx = wx_world - half_w
+        if wx % TICK == 0:
             s = f"{wx:+d}"
             x_label.append(s, style="bright_blue")
-            pad = X_TICK * cell_w - len(s)
+            # Advance c past the columns the label occupies on screen.
+            c_advance = max(1, (len(s) + cell_w - 1) // cell_w)
+            pad = c_advance * cell_w - len(s)
             if pad > 0:
                 x_label.append(" " * pad)
+            c += c_advance
+        else:
+            x_label.append(" " * cell_w)
+            c += 1
 
     body = Align.center(Group(*labelled_rows, x_label), vertical="middle")
     if pack_x == 1 and pack_y == 1 and cell_w == 1 and cell_h == 1:

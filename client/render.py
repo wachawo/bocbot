@@ -737,26 +737,32 @@ def build_map(
 
     char_cols = max(1, win_w // pack_x)
     x_label = Text(" " * (LABEL_W + len(sep)))   # align under the map content
-    # Walk by logical column. Emit a label when the displayed x is divisible
-    # by TICK; consume cell_w screen chars per logical column. Each label
-    # string takes ``len(s)`` screen chars; pad with spaces to the next
-    # logical-column boundary so subsequent ticks line up under the map.
-    c = 0
-    while c < char_cols:
-        wx_world = win_x0 + c * pack_x
-        wx = wx_world - half_w
+    # Constant-width x-label: the number of labels visible flips between
+    # `(char_cols // TICK)` and `(char_cols // TICK) + 1` as the player
+    # walks across multiples of TICK. If the label *count* drove the
+    # width, every TICK-th step would change the whole panel's width by
+    # one label-group (~10 chars) and Align.center would jerk the entire
+    # map sideways by that amount. Instead, allocate a fixed `char_cols *
+    # cell_w` buffer of spaces and write each visible label into its
+    # world-anchored position; labels that would overflow the right edge
+    # are dropped rather than truncated.
+    target_width = char_cols * cell_w
+    label_slots: List[Tuple[int, str]] = []   # (start_screen_col, label_str)
+    for c in range(char_cols):
+        wx = win_x0 + c * pack_x - half_w
         if wx % TICK == 0:
             s = f"{wx:+d}"
-            x_label.append(s, style="bright_blue")
-            # Advance c past the columns the label occupies on screen.
-            c_advance = max(1, (len(s) + cell_w - 1) // cell_w)
-            pad = c_advance * cell_w - len(s)
-            if pad > 0:
-                x_label.append(" " * pad)
-            c += c_advance
-        else:
-            x_label.append(" " * cell_w)
-            c += 1
+            pos = c * cell_w
+            if pos + len(s) <= target_width:
+                label_slots.append((pos, s))
+    written = 0
+    for pos, s in label_slots:
+        if pos > written:
+            x_label.append(" " * (pos - written))
+        x_label.append(s, style="bright_blue")
+        written = pos + len(s)
+    if written < target_width:
+        x_label.append(" " * (target_width - written))
 
     body = Align.center(Group(*labelled_rows, x_label), vertical="middle")
     if pack_x == 1 and pack_y == 1 and cell_w == 1 and cell_h == 1:

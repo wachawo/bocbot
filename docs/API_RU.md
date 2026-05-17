@@ -157,7 +157,7 @@ sig = key.sign(f"bocbot:hello:alice:{ts}".encode()).hex()
 {"type": "died", "reason": "trail_cut", "killer": 7, "area_lost": 27}
 ```
 
-`reason ∈ {trail_cut, out_of_bounds, trapped_in_zone}`.
+`reason ∈ {trail_cut, out_of_bounds, captured}`.
 
 #### `kill`
 

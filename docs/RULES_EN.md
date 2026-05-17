@@ -77,9 +77,8 @@ Invariant: a player's zone is always a single connected region.
 | `out_of_bounds`     | Stepping outside `[0, MAP_W) × [0, MAP_H)`. Suicide.                                | No. `deaths` counter is **not** incremented either. |
 | `trail_cut`         | Another player stepped on a cell of your trail. The other player keeps moving.      | Yes — the one who stepped on the trail. |
 | `captured`          | Your trail ended up inside someone else's capture region during their flood-fill.   | Yes — the capturer. |
-| `trapped_in_zone`   | Every cell of your trail lies inside the **same** enemy zone (not yours, not the edge, not mixed across multiple zones). | Yes — the owner of that zone. |
 
-**Why `trapped_in_zone` exists.** Large territories would be free transit corridors for trail-laying — `trapped_in_zone` makes a long trail through a single enemy zone fatal. Walking along the edge of an enemy zone, or threading through several different zones, is still allowed.
+Enemy zones are freely walkable — classic paper.io behaviour. There used to be a house rule (`trapped_in_zone`) that killed a player whose entire trail sat inside a single enemy zone; it was removed because it caught honest players far more often than it caught the transit-corridor exploit it was meant to discourage.
 
 **Kill/death balance invariant.** Deaths without an attributable killer (`out_of_bounds`) do not increment the global `total_deaths` counter. This guarantees `sum(kills) == sum(deaths)` across the server.
 
@@ -161,7 +160,6 @@ What to avoid and what to lean on when writing `decide(state)`. These all follow
 - Your zone is safe footing. Your trail outside your zone is exposure.
 - Long trails are exponentially riskier — every extra cell is one more place an enemy can cut you.
 - Close loops back through your own zone as soon as feasible.
-- **`trapped_in_zone` is the most-missed death.** Do not lay an entire trail inside a single enemy zone, even briefly. Walk along the *edge* of the enemy zone, or thread through several different zones, but never a single one (see Section 7).
 - Don't try to outrun an enemy who is closer to your zone-edge than you are. Speed is the same for everyone — they'll get there first and cut you off. Turn into a different vector.
 
 **Offence**

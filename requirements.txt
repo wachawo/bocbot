@@ -1,0 +1,11 @@
+# Single dependency manifest for everything under BoCBot/:
+#   tools/keygen.py     — cryptography
+#   tools/signup.py     — cryptography, python-dotenv, requests
+#   tools/login.py      — cryptography, python-dotenv, websockets
+#   bot.py              — cryptography, python-dotenv, websockets
+#   client/client.py    — all of the above + rich
+python-dotenv>=1.0
+cryptography>=42.0
+websockets>=12.0
+requests>=2.31
+rich>=13.0

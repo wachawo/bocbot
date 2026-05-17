@@ -1,0 +1,25 @@
+# Private keys — never commit. Public keys (.pub) ARE commit-able and live
+# alongside on a per-user branch named after the player's GitHub login.
+keys/*.key
+!keys/.gitkeep
+
+# Python
+*.pyc
+__pycache__/
+*.egg-info/
+.pytest_cache/
+
+# Env / local config
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+
+# Editors
+.vscode/
+.idea/
+*.swp
+.DS_Store

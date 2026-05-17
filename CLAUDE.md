@@ -11,7 +11,7 @@ This is a **player template** for Battle of Code. After fork + signup via `tools
   - `signup.py` — interactive signup: ensure `.env`, generate keys, prompt for the GitHub push, then call REST `/api/auth/signup` + `/api/auth/signup/verify`.
   - `login.py` — WebSocket smoke-test (hello → auth_ok → welcome → ping/pong).
 - **Interactive CLI player**: `client/`. Rich UI, WSAD. Same auth as `bot.py` (signed hello). Launch via `./play.sh`.
-- **Docs**: `docs/RULES.md` (game), `docs/PROTO.md` (wire format — REST + WebSocket), `docs/EXAMPLES.md` (decision-making cookbook).
+- **Docs**: `docs/RULES.md` (game), `docs/AUTH.md` (REST signup flow), `docs/API.md` (WebSocket wire format), `docs/EXAMPLES.md` (decision-making cookbook). Translations of the top-level README live in `docs/README_<LANG>.md`.
 - **Scripts at root**: `play.sh` (launches `client/client.py`), `validate.sh` (legacy curl check against a future `/api/validate` — keep until that endpoint exists or the script gets retired).
 
 ## When the user says "improve my bot"
@@ -23,7 +23,7 @@ This is a **player template** for Battle of Code. After fork + signup via `tools
 
 ## Wire-protocol invariants
 
-`docs/PROTO.md` is now the source of truth. Quick recap:
+`docs/API.md` (WebSocket gameplay) and `docs/AUTH.md` (REST signup) are the sources of truth. Quick recap:
 
 - **REST auth**: HTTP on `BOC_AUTH_HOST:BOC_AUTH_PORT` (default `:8000`).
   - `POST /api/auth/signup` → server fetches `key.pub` from the player's GitHub fork on branch `<username>`, returns a nonce.

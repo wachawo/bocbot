@@ -59,7 +59,13 @@ DIM_PALETTE: List[str] = [
     "color(30)",   # dim vivid_cyan
     "color(250)",  # dim vivid_white
     "color(130)",  # dim orange
-    "color(89)",   # dim pink/violet
+    "color(126)",  # dim pink/violet — was "color(89)" but that collided
+                   # with DIM_PALETTE[11] (dim vivid_magenta). With the
+                   # collision, pids 12 (idx 11) and 16 (idx 15) looked
+                   # identical in fog, so adjacent enemy territory was
+                   # indistinguishable from extended own-home. c126
+                   # (#AF0087) is a darker pink-magenta, distinct from
+                   # both c89 and every other DIM/BG slot.
 ]
 
 # Bright colors where black foreground contrasts better; others use white.

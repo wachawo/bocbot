@@ -534,6 +534,23 @@ def test_row_widths_consistent():
           f"got {len(distinct)} distinct visual widths: {sorted(distinct)[:6]}")
 
 
+def test_palette_entries_are_distinct():
+    """Two pids whose idx differs must never resolve to the same colour
+    in either palette. Collisions make adjacent enemy zones look like
+    extended own home, which once cost wachawo (pid 16) a 1546-cell
+    `trapped_in_zone` death against bot13 (pid 12) because both fog
+    shades were c89.
+    """
+    bg = render.BG_PALETTE
+    dim = render.DIM_PALETTE
+    check("bg_palette_distinct",
+          len(set(bg)) == len(bg),
+          f"BG_PALETTE has duplicates: {bg}")
+    check("dim_palette_distinct",
+          len(set(dim)) == len(dim),
+          f"DIM_PALETTE has duplicates: {dim}")
+
+
 def test_live_view_floor_is_lighter_than_fog():
     """Live view = bright spotlight (color 238). Fog = terminal default.
     The contrast must be unambiguous."""
@@ -566,6 +583,7 @@ if __name__ == "__main__":
     test_own_trail_visible_in_fog()
     test_no_enemy_trail_in_fog_memory()
     test_own_zone_dimmed_outside_view()
+    test_palette_entries_are_distinct()
     print()
     print(f"== {results['pass']} pass / {results['fail']} fail ==")
     if results["fail"]:

@@ -3,7 +3,6 @@
 """Rich-based renderer for Battle of Code: header + map + dashboard + footer."""
 
 import time
-from array import array
 from typing import Any, Deque, Dict, List, Optional, Tuple
 from collections import deque
 
@@ -133,25 +132,25 @@ class MemoryMap:
     def __init__(self) -> None:
         self.map_w: int = 0
         self.map_h: int = 0
-        self.zone: array = array("i")
-        self.trail: array = array("i")
+        self.zone: List[int] = []
+        self.trail: List[int] = []
         self.seen: bytearray = bytearray()
 
     def resize(self, map_w: int, map_h: int) -> None:
         n = map_w * map_h
         self.map_w = map_w
         self.map_h = map_h
-        self.zone = array("i", [0]) * n if n > 0 else array("i")
-        self.trail = array("i", [0]) * n if n > 0 else array("i")
+        self.zone = [0] * n
+        self.trail = [0] * n
         self.seen = bytearray(n)
 
     def update_from_view(self, view: Dict[str, Any]) -> None:
         """Apply the server's live view rectangle to fog memory.
 
-        Per-row slice assignment into ``array.array('i')`` storage —
-        substantially cheaper than the per-cell Python loop the old
-        implementation used (fog at 123×123 × 10 Hz × 3 fields ≈ half a
-        million per-cell writes per second).
+        Per-row slice assignment substantially cheaper than the
+        per-cell Python loop the old implementation used (fog at
+        123×123 × 10 Hz × 3 fields ≈ half a million per-cell writes
+        per second).
         """
         if self.map_w == 0:
             return
@@ -163,7 +162,9 @@ class MemoryMap:
         trail_rows: List[List[int]] = view.get("trail") or []
         mw = self.map_w
         mh = self.map_h
-        # In-map x range of this row, in world coordinates and in row-local indices.
+        # In-map x range, in world coordinates and in row-local indices.
+        # Out-of-map cells (server emits -1) sit at x positions outside
+        # [xa..xb), so they never reach memory.
         xa = max(0, x0)
         xb = min(mw, x0 + w)
         if xa >= xb:
@@ -182,20 +183,17 @@ class MemoryMap:
             trow = trail_rows[vy] if vy < len(trail_rows) else []
             base = y * mw
             # If the server row is shorter than the requested width, pad
-            # locally so the slice always matches `span`. Out-of-map cells
-            # use the server's -1 marker, harmless here since they sit at
-            # x positions we've already clipped out via [xa..xb).
+            # locally so the slice always matches `span`.
             rb = min(rb_world, len(zrow))
-            self.zone[base + xa : base + xa + (rb - ra)] = zrow[ra:rb]
+            zslice = zrow[ra:rb]
             if rb < rb_world:
-                # Pad the tail with zeros if the row was short.
-                tail = rb_world - rb
-                self.zone[base + xa + (rb - ra) : base + xb] = array("i", [0] * tail)
+                zslice = zslice + [0] * (rb_world - rb)
+            self.zone[base + xa : base + xb] = zslice
             t_rb = min(rb_world, len(trow))
-            self.trail[base + xa : base + xa + (t_rb - ra)] = trow[ra:t_rb]
+            tslice = trow[ra:t_rb]
             if t_rb < rb_world:
-                tail = rb_world - t_rb
-                self.trail[base + xa + (t_rb - ra) : base + xb] = array("i", [0] * tail)
+                tslice = tslice + [0] * (rb_world - t_rb)
+            self.trail[base + xa : base + xb] = tslice
             self.seen[base + xa : base + xb] = ones
 
     def update_from_fog(self, fog: Dict[str, Any]) -> None:
@@ -210,10 +208,9 @@ class MemoryMap:
         elsewhere. Apply BEFORE ``update_from_view`` so that for cells
         in the live view the richer (full-trail) view data wins.
 
-        Uses row-slice assignment into ``array.array('i')`` for speed,
-        same approach as ``update_from_view`` above. Out-of-map cells
-        (server emits ``-1``) sit at x positions already clipped by the
-        ``[xa..xb)`` mask, so they never reach memory.
+        Same row-slice approach as ``update_from_view``. Out-of-map
+        cells (server emits ``-1``) sit at x positions already clipped
+        by the ``[xa..xb)`` mask, so they never reach memory.
         """
         if self.map_w == 0:
             return
@@ -243,15 +240,15 @@ class MemoryMap:
             trow = trail_rows[ry] if ry < len(trail_rows) else []
             base = wy * mw
             rb = min(rb_world, len(zrow))
-            self.zone[base + xa : base + xa + (rb - ra)] = zrow[ra:rb]
+            zslice = zrow[ra:rb]
             if rb < rb_world:
-                tail = rb_world - rb
-                self.zone[base + xa + (rb - ra) : base + xb] = array("i", [0] * tail)
+                zslice = zslice + [0] * (rb_world - rb)
+            self.zone[base + xa : base + xb] = zslice
             t_rb = min(rb_world, len(trow))
-            self.trail[base + xa : base + xa + (t_rb - ra)] = trow[ra:t_rb]
+            tslice = trow[ra:t_rb]
             if t_rb < rb_world:
-                tail = rb_world - t_rb
-                self.trail[base + xa + (t_rb - ra) : base + xb] = array("i", [0] * tail)
+                tslice = tslice + [0] * (rb_world - t_rb)
+            self.trail[base + xa : base + xb] = tslice
             self.seen[base + xa : base + xb] = ones
 
     def commit_capture(self, pid: int, cells: Optional[List[Any]] = None) -> None:

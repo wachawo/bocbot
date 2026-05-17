@@ -315,14 +315,16 @@ def test_world_static_between_me_y_and_me_y_plus_2():
     view_b = dict(view_a, y0=32)
     rows_a, _ = render_scene(me_a, view_a, [], mem)
     rows_b, _ = render_scene(me_b, view_b, [], mem)
-    # Topmost char-row that touches a green-or-grey cell. As the player
-    # moves 2 cells south the strip TOP slides 1 char row north — first
-    # it's a green cell (in view), then it becomes grey (in fog), but
-    # either way the top should be visible 1 row higher than before.
-    # Detect only the strip's own pid-2 colours (green and its fog-dim
-    # variants), NOT the fog-ring floor (c234) which centres on player
-    # and would always pin the top to a constant char row.
-    STRIP_COLOURS = {"green", "bright_green", "c34", "c46", "c237", "c235", "c233"}
+    # Topmost char-row that touches a green cell. As the player moves
+    # 2 cells south the strip TOP slides 1 char row north — first it's
+    # the bright green of the strip (in view), then it becomes the DIM
+    # green of the strip (in fog), but either way the top should be
+    # visible 1 row higher than before. Detect only the strip's own
+    # pid-2 colours (BG_PALETTE[1] = c34 green + DIM_PALETTE[1] = c22
+    # green-dim, plus the vivid pid-9 c46/c28 alternates), NOT the
+    # fog-ring floor (c234) which centres on player and would always
+    # pin the top to a constant char row.
+    STRIP_COLOURS = {"green", "bright_green", "c34", "c46", "c22", "c28"}
     def coloured_rows(rs):
         out = []
         for r_idx, row in enumerate(rs):

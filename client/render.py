@@ -506,16 +506,13 @@ def build_map(
     my_y = int(me.get("y", -1))
     my_pid = int(me.get("id", 0))
 
-    # Distance-based fog dim. Live view ≈ ±20 cells; the fog payload from
-    # the server covers a 3× window (≈ ±60). We map Chebyshev distance to
-    # 3 dim levels so the colour visibly fades as zones drift away from
-    # the player toward the screen edge instead of all sitting at one
-    # uniform grey.
-    view_half_w = max(1, w // 2)
-    view_half_h = max(1, h // 2)
-    fog_step_1 = max(view_half_w, view_half_h)                 # just outside view
-    fog_step_2 = fog_step_1 + max(8, fog_step_1 // 2)          # mid-fog
-    # Beyond fog_step_2 → deepest dim.
+    # Fog colouring: each cell outside the live view paints in the DIM
+    # variant of its zone owner's palette colour (``dim_bg_for(z)``). No
+    # distance-graded shading — that turned out to make foreign zones
+    # look like three different cells of the same row had three different
+    # owners, which is the opposite of helpful. Zone identity is what
+    # the player needs to read at a glance; in-view vs fog is encoded as
+    # bright-vs-dim of the same hue.
 
     # Helper: is world cell currently inside the live view rectangle?
     def in_view(wx: int, wy: int) -> bool:
@@ -574,30 +571,28 @@ def build_map(
     # that straddles the live-view boundary doesn't render one half bright
     # and the other dim — the player would see a "half-transparent square
     # right next to me" artefact instead of a clean view boundary.
-    def half_style(samp, char_in_view: bool, dist: int):
+    def half_style(samp, char_in_view: bool):
         z, t, me_, en_pid, iv, sn, wall = samp
         if wall:
             return "grey50", None, 0
         if not sn and use_memory:
             return None, None, 0
         col: Optional[str] = bg_for(z) if z > 0 else None
-        owned = (z > 0 and z == my_pid) or (t > 0 and t == my_pid)
+        zone_is_mine  = (z > 0 and z == my_pid)
+        trail_is_mine = (t > 0 and t == my_pid)
+        owned = zone_is_mine or trail_is_mine
         if use_memory and not char_in_view and not me_:
-            if owned:
-                # Own zone outside view: use the dim version of our own
-                # palette colour so it visibly differs from the bright
-                # red inside the live view (player can tell at a glance
-                # what's currently visible vs only remembered).
-                if col is not None:
-                    col = dim_bg_for(my_pid)
-            elif col is not None:
-                # Graduated grey for foreign zones in fog.
-                if dist <= fog_step_1:
-                    col = "color(237)"   # grey ~23%
-                elif dist <= fog_step_2:
-                    col = "color(235)"   # grey ~15%
-                else:
-                    col = "color(233)"   # grey ~7%
+            # OUT of live view: paint the DIM variant of whoever owns
+            # the cell's zone. Same hue as in-view, just darker. Players
+            # see zone identity at a glance regardless of distance.
+            # Empty cells (z == 0) — including cells where my trail is
+            # the only thing — keep their fog-floor (no background); the
+            # trail-dot marker is plenty to render the trail. Painting
+            # `dim_bg_for(my_pid)` here made my trail outside the view
+            # look like it was sitting on a stretch of my own home,
+            # which it isn't.
+            if z > 0:
+                col = dim_bg_for(z)
         # LIVE VIEW = the BRIGHT region: empty in-view cells get a
         # noticeably light backdrop (color 238 ≈ grey ~30%) so the
         # view rectangle is the "illuminated" zone, like a spotlight.
@@ -611,7 +606,7 @@ def build_map(
             marker = "ME"          # internal token; rendered as `×` bright_white
         elif en_pid > 0:
             marker = "EN"          # internal token; rendered as `×` enemy-coloured
-        elif t > 0 and t != z and (char_in_view or owned):
+        elif t > 0 and t != z and (char_in_view or trail_is_mine):
             # `·` for trails. Server clears trail on closed-loop capture,
             # so trail inside own zone is naturally absent — and that's
             # the correct visual: the moment you close, your home is
@@ -625,11 +620,8 @@ def build_map(
     def render_char(upper_samp, lower_samp, wx_here: int, upper_y: int, lower_y: int):
         char_in_view = upper_samp[4] or lower_samp[4]
         # Chebyshev distance from player to the char (closer of the two halves).
-        dx = abs(wx_here - my_x)
-        dy = min(abs(upper_y - my_y), abs(lower_y - my_y))
-        dist = max(dx, dy)
-        u_col, u_marker, u_trail = half_style(upper_samp, char_in_view, dist)
-        l_col, l_marker, l_trail = half_style(lower_samp, char_in_view, dist)
+        u_col, u_marker, u_trail = half_style(upper_samp, char_in_view)
+        l_col, l_marker, l_trail = half_style(lower_samp, char_in_view)
         if u_marker is not None or l_marker is not None:
             order = {"ME": 0, "EN": 1, "·": 2}
             if u_marker is not None and l_marker is not None:

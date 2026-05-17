@@ -1,6 +1,8 @@
 # API.md — Battle of Code wire protocol
 
-> See also: [AUTH.md](AUTH.md) for the REST signup flow, [RULES.md](RULES.md) for game rules.
+**[English](https://github.com/battleofcode/bocbot/blob/main/docs/API_EN.md)** | [Русский](https://github.com/battleofcode/bocbot/blob/main/docs/API_RU.md)
+
+> See also: [AUTH.md](AUTH_EN.md) for the REST signup flow, [RULES.md](RULES_EN.md) for game rules.
 
 This document covers the **realtime gameplay protocol** — the WebSocket transport, the messages the server sends, and the commands the client sends.
 
@@ -36,7 +38,7 @@ The very first frame the client sends must be a signed `hello`:
 
 | Field         | Type      | Notes                                                                  |
 |---------------|-----------|------------------------------------------------------------------------|
-| `username`    | string    | GitHub login (previously registered via REST signup — see [AUTH.md](AUTH.md)) |
+| `username`    | string    | GitHub login (previously registered via REST signup — see [AUTH.md](AUTH_EN.md)) |
 | `ts`          | int       | Unix seconds. Server rejects skew > 30 s in either direction           |
 | `sig`         | string    | hex Ed25519 signature over UTF-8 bytes of `bocbot:hello:<username>:<ts>` |
 | `is_bot`      | bool      | bots get a tighter view window for AI tractability                     |
@@ -270,5 +272,5 @@ If the server adds new fields, clients should ignore unknown ones. If the server
 - [`tools/login.py`](../tools/login.py) — minimum viable client (hello → ping → pong → close).
 - [`client/client.py`](../client/client.py) — full Rich-UI player.
 - [`bot.py`](../bot.py) — bot template; `decide(state)` consumes `state` messages directly.
-- [`AUTH.md`](AUTH.md) — REST signup flow producing the registered pubkey this protocol verifies against.
-- [`RULES.md`](RULES.md) — game mechanics (zones, trails, capture, death).
+- [`AUTH.md`](AUTH_EN.md) — REST signup flow producing the registered pubkey this protocol verifies against.
+- [`RULES.md`](RULES_EN.md) — game mechanics (zones, trails, capture, death).

@@ -1,10 +1,12 @@
 # AUTH.md — Battle of Code authentication
 
-> See also: [API.md](API.md) for the realtime game protocol, [RULES.md](RULES.md) for game rules.
+**[English](https://github.com/battleofcode/bocbot/blob/main/docs/AUTH_EN.md)** | [Русский](https://github.com/battleofcode/bocbot/blob/main/docs/AUTH_RU.md)
+
+> See also: [API.md](API_EN.md) for the realtime game protocol, [RULES.md](RULES_EN.md) for game rules.
 
 Battle of Code uses Ed25519 signed-hello authentication: no passwords, no JWTs, no cookies, no shared secrets. The trust anchor is a public key the player publishes on their own GitHub fork — the server fetches it once at signup, stores it, and verifies every subsequent connection against it.
 
-This document covers the **REST signup flow**. The **WebSocket hello** that every gameplay session sends is in [API.md](API.md).
+This document covers the **REST signup flow**. The **WebSocket hello** that every gameplay session sends is in [API.md](API_EN.md).
 
 ---
 
@@ -191,5 +193,5 @@ Step 2 force-pushes because the server **doesn't trust git history** — it re-r
 - [`tools/keygen.py`](../tools/keygen.py) — keypair generator (idempotent).
 - [`tools/signup.py`](../tools/signup.py) — end-to-end signup with prompts.
 - [`tools/login.py`](../tools/login.py) — WebSocket smoke-test.
-- [`API.md`](API.md) — gameplay wire format (uses the same private key to sign each hello).
+- [`API.md`](API_EN.md) — gameplay wire format (uses the same private key to sign each hello).
 - RFC 8032 — Ed25519 spec.

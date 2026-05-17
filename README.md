@@ -1,6 +1,6 @@
 # bocbot
 
-**[English](https://github.com/battleofcode/bocbot/blob/main/README.md)** | [中文](https://github.com/battleofcode/bocbot/blob/main/docs/README_ZH.md) | [हिन्दी](https://github.com/battleofcode/bocbot/blob/main/docs/README_HI.md) | [Español](https://github.com/battleofcode/bocbot/blob/main/docs/README_ES.md) | [Français](https://github.com/battleofcode/bocbot/blob/main/docs/README_FR.md) | [العربية](https://github.com/battleofcode/bocbot/blob/main/docs/README_AR.md) | [Русский](https://github.com/battleofcode/bocbot/blob/main/docs/README_RU.md)
+**[English](https://github.com/battleofcode/bocbot/blob/main/README.md)** | [Русский](https://github.com/battleofcode/bocbot/blob/main/docs/README_RU.md)
 
 Player template for **Battle of Code** — a multiplayer territory-capture game where everyone runs their own bot (or plays manually from the terminal).
 
@@ -158,7 +158,7 @@ Response:
 
 The server now has `(username, pubkey)` cached in its SQLite auth store. It won't talk to GitHub for you again.
 
-> Same thing in script form: `python3 tools/signup.py`. It prints exactly which call it's making at each step. See [`docs/AUTH.md`](docs/AUTH.md) for the full reference.
+> Same thing in script form: `python3 tools/signup.py`. It prints exactly which call it's making at each step. See [`docs/AUTH_EN.md`](docs/AUTH_EN.md) for the full reference.
 
 ### 7. Verify you can play
 
@@ -246,10 +246,10 @@ python3 client/client.py -f 1
 | `tools/keygen.py`      | generate Ed25519 keypair into `keys/<u>.key` + `keys/<u>.pub`              |
 | `tools/signup.py`      | end-to-end signup against the REST API                                     |
 | `tools/login.py`       | WebSocket smoke-test (hello → ping → pong)                                 |
-| `docs/AUTH.md`         | auth deep dive (REST signup, signing rules, failure modes)                 |
-| `docs/API.md`          | wire protocol (WebSocket frames, state messages, events)                   |
-| `docs/RULES.md`        | game rules (zones, trails, capture, death conditions)                      |
-| `docs/EXAMPLES.md`     | bot decision-making cookbook                                               |
+| `docs/AUTH_EN.md`         | auth deep dive (REST signup, signing rules, failure modes)                 |
+| `docs/API_EN.md`          | wire protocol (WebSocket frames, state messages, events)                   |
+| `docs/RULES_EN.md`        | game rules (zones, trails, capture, death conditions)                      |
+| `docs/EXAMPLES_EN.md`     | bot decision-making cookbook                                               |
 | `keys/<u>.pub`         | your **public** key (committed on the `<u>` branch of your fork)           |
 | `keys/<u>.key`         | your **private** key (git-ignored, mode 0600)                              |
 
@@ -267,9 +267,9 @@ python3 client/client.py -f 1
 `main` stays clean: PRs upstream don't touch your `.pub`. Your branch is your registration.
 
 Deep references:
-- [`docs/AUTH.md`](docs/AUTH.md) — the auth flow, error codes, security notes
-- [`docs/API.md`](docs/API.md) — the wire format (REST + WebSocket)
-- [`docs/RULES.md`](docs/RULES.md) — game mechanics
+- [`docs/AUTH_EN.md`](docs/AUTH_EN.md) — the auth flow, error codes, security notes
+- [`docs/API_EN.md`](docs/API_EN.md) — the wire format (REST + WebSocket)
+- [`docs/RULES_EN.md`](docs/RULES_EN.md) — game mechanics
 
 ---
 
@@ -277,9 +277,9 @@ Deep references:
 
 Open `bot.py`. The entire bot is one file. The only function you need to touch is `decide(state)` at the top.
 
-- Read [`docs/RULES.md`](docs/RULES.md) for what wins.
-- Read [`docs/API.md`](docs/API.md) for the shape of `state` (it's just a JSON dict).
-- Read [`docs/EXAMPLES.md`](docs/EXAMPLES.md) for the recipe book (wall avoidance, hunting, distance metrics).
+- Read [`docs/RULES_EN.md`](docs/RULES_EN.md) for what wins.
+- Read [`docs/API_EN.md`](docs/API_EN.md) for the shape of `state` (it's just a JSON dict).
+- Read [`docs/EXAMPLES_EN.md`](docs/EXAMPLES_EN.md) for the recipe book (wall avoidance, hunting, distance metrics).
 
 `bot.go` and `bot.js` are placeholders that print "not implemented yet" — if you want to play in Go or Node, port `bot.py` over. The protocol is ~80 lines of real logic; everything else is `decide()` and reconnect plumbing.
 

@@ -1,6 +1,6 @@
 # bocbot
 
-[English](https://github.com/battleofcode/bocbot/blob/main/README.md) | [中文](https://github.com/battleofcode/bocbot/blob/main/docs/README_ZH.md) | [हिन्दी](https://github.com/battleofcode/bocbot/blob/main/docs/README_HI.md) | [Español](https://github.com/battleofcode/bocbot/blob/main/docs/README_ES.md) | [Français](https://github.com/battleofcode/bocbot/blob/main/docs/README_FR.md) | [العربية](https://github.com/battleofcode/bocbot/blob/main/docs/README_AR.md) | **[Русский](https://github.com/battleofcode/bocbot/blob/main/docs/README_RU.md)**
+[English](https://github.com/battleofcode/bocbot/blob/main/README.md) | **[Русский](https://github.com/battleofcode/bocbot/blob/main/docs/README_RU.md)**
 
 Шаблон игрока для **Battle of Code** — многопользовательской игры на захват территории, где каждый запускает своего бота (или играет вручную из терминала).
 
@@ -158,7 +158,7 @@ curl -s -X POST "http://${BOC_AUTH_HOST:-127.0.0.1}:${BOC_AUTH_PORT:-8000}/api/a
 
 Сервер теперь хранит `(username, pubkey)` в SQLite. Больше он на GitHub за вами не пойдёт.
 
-> То же самое скриптом: `python3 tools/signup.py`. Он печатает каждый шаг с указанием какой именно вызов делает. См. [`docs/AUTH.md`](AUTH.md) для полной ссылочной документации.
+> То же самое скриптом: `python3 tools/signup.py`. Он печатает каждый шаг с указанием какой именно вызов делает. См. [`docs/AUTH_RU.md`](AUTH_RU.md) для полной ссылочной документации.
 
 ### 7. Проверьте что можете играть
 
@@ -246,10 +246,10 @@ python3 client/client.py -f 1
 | `tools/keygen.py`      | генерация Ed25519 keypair в `keys/<u>.key` + `keys/<u>.pub`                |
 | `tools/signup.py`      | сквозная регистрация через REST API                                        |
 | `tools/login.py`       | WebSocket-смоук-тест (hello → ping → pong)                                 |
-| `docs/AUTH.md`         | подробно про авторизацию (REST signup, правила подписи, коды ошибок)       |
-| `docs/API.md`          | wire-протокол (WebSocket-фреймы, state-сообщения, события)                 |
-| `docs/RULES.md`        | правила игры (зоны, trail, capture, условия смерти)                        |
-| `docs/EXAMPLES.md`     | сборник рецептов для бота                                                  |
+| `docs/AUTH_RU.md`         | подробно про авторизацию (REST signup, правила подписи, коды ошибок)       |
+| `docs/API_RU.md`          | wire-протокол (WebSocket-фреймы, state-сообщения, события)                 |
+| `docs/RULES_RU.md`        | правила игры (зоны, trail, capture, условия смерти)                        |
+| `docs/EXAMPLES_RU.md`     | сборник рецептов для бота                                                  |
 | `keys/<u>.pub`         | ваш **публичный** ключ (закоммичен на ветку `<u>` вашего форка)            |
 | `keys/<u>.key`         | ваш **приватный** ключ (git-игнорируется, режим 0600)                      |
 
@@ -267,9 +267,9 @@ python3 client/client.py -f 1
 `main` остаётся чистой: апстрим-PR не трогают ваш `.pub`. Ваша ветка — ваша регистрация.
 
 Глубокие ссылки:
-- [`docs/AUTH.md`](AUTH.md) — поток авторизации, коды ошибок, заметки по безопасности
-- [`docs/API.md`](API.md) — wire-формат (REST + WebSocket)
-- [`docs/RULES.md`](RULES.md) — игровая механика
+- [`docs/AUTH_RU.md`](AUTH_RU.md) — поток авторизации, коды ошибок, заметки по безопасности
+- [`docs/API_RU.md`](API_RU.md) — wire-формат (REST + WebSocket)
+- [`docs/RULES_RU.md`](RULES_RU.md) — игровая механика
 
 ---
 
@@ -277,9 +277,9 @@ python3 client/client.py -f 1
 
 Откройте `bot.py`. Весь бот — один файл. Единственная функция которую вы трогаете — `decide(state)` сверху.
 
-- Прочитайте [`docs/RULES.md`](RULES.md) — что считается победой.
-- Прочитайте [`docs/API.md`](API.md) — какая форма у `state` (это просто JSON-словарь).
-- Прочитайте [`docs/EXAMPLES.md`](EXAMPLES.md) — рецепты (избегание стен, охота, метрики расстояния).
+- Прочитайте [`docs/RULES_RU.md`](RULES_RU.md) — что считается победой.
+- Прочитайте [`docs/API_RU.md`](API_RU.md) — какая форма у `state` (это просто JSON-словарь).
+- Прочитайте [`docs/EXAMPLES_RU.md`](EXAMPLES_RU.md) — рецепты (избегание стен, охота, метрики расстояния).
 
 `bot.go` и `bot.js` — заглушки, которые печатают "not implemented yet". Если хотите играть на Go или Node — портируйте `bot.py`. Протокол ~80 строк реальной логики; всё остальное — `decide()` и обвязка реконнекта.
 

@@ -188,6 +188,8 @@ git checkout main
 
 `./play.sh` opens a Rich terminal UI. Address and username come from your `.env` (`BOC_GAME_HOST`, `BOC_GAME_PORT`, `USERNAME`); CLI flags on `client/client.py` override them.
 
+Runs on Linux, macOS, and Windows (Windows Terminal is recommended over the legacy `conhost`; Git Bash / MINGW64 also works). On any platform you can launch the client directly with `python3 client/client.py`.
+
 | Key            | Action |
 |----------------|--------|
 | `W`            | move up    |

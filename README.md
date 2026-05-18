@@ -1,6 +1,6 @@
 # bocbot
 
-**[English](https://github.com/battleofcode/bocbot/blob/main/README.md)** | [Русский](https://github.com/battleofcode/bocbot/blob/main/docs/README_RU.md)
+**[English](README.md)** ([Quick setup](#quick-setup)) | [Русский](docs/README_RU.md) ([краткая установка](docs/README_RU.md#краткая-установка))
 
 Player template for **Battle of Code** — a multiplayer territory-capture game where everyone runs their own bot (or plays manually from the terminal).
 
@@ -27,9 +27,29 @@ That's the whole trust model. No password, no JWT, no cookie. Every game session
 
 ---
 
+## Quick setup
+
+Minimum path from zero to playing. Replace `<login>` with your GitHub login.
+
+| # | Do this |
+|---|---------|
+| 1 | Fork & clone (see [§1](#1-fork--clone)) |
+| 2 | `pip install -r requirements.txt` ([§2](#2-install-python-dependencies)) |
+| 3 | `cp .env.example .env` and set `USERNAME=<login>` ([§3](#3-configure-env)) |
+| 4 | `python3 tools/signup.py` — keys, `git push`, REST signup in one go ([§6.1](#61-with-the-script-recommended)) |
+| 5 | `./play.sh` or `python3 bot.py` ([§7](#7-verify-and-play)) |
+
+**Keys only** (no server signup yet): after step 3, run `python3 tools/keygen.py` ([§4.1](#41-with-the-script-recommended)). It reads `USERNAME` from `.env`, not the OS `$USERNAME` (on Windows those differ).
+
+**Manual / verify yourself:** [generate keys by hand](#42-or-by-hand) · [signup with curl](#62-or-by-hand) · [`docs/AUTH_EN.md`](docs/AUTH_EN.md) (errors, security).
+
+**Full walkthrough:** [Quickstart §1–7](#quickstart) below · [Русский — краткая установка](docs/README_RU.md#краткая-установка) · [Русский — полный Quickstart](docs/README_RU.md#quickstart)
+
+---
+
 ## Quickstart
 
-Replace `<login>` with your GitHub login everywhere.
+Replace `<login>` with your GitHub login everywhere. Prefer the [Quick setup](#quick-setup) table above; this section is the detailed version with script and hand alternatives.
 
 ### 1. Fork & clone
 
@@ -71,9 +91,10 @@ You need two files in `keys/`: a private `.key` (32 raw bytes, mode `0600`, **ne
 
 ```bash
 python3 tools/keygen.py
+# or explicitly: python3 tools/keygen.py <login>
 ```
 
-This creates `keys/<login>.key` and `keys/<login>.pub`. Idempotent — if the private key already exists, it's reused and the public key is regenerated from it.
+Reads `USERNAME` from `.env` when called without an argument (ignores the OS `$USERNAME` on Windows). Creates `keys/<login>.key` and `keys/<login>.pub`. Idempotent — if the private key already exists, it's reused and the public key is regenerated from it. Refuses placeholder values such as `default`.
 
 #### 4.2. OR by hand
 
@@ -82,9 +103,12 @@ Same two files, no extra tool:
 ```bash
 python3 - <<'PY'
 import os, pathlib
+from dotenv import dotenv_values
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-login = os.environ.get("USERNAME")
+login = (dotenv_values(".env").get("USERNAME") or "").strip()
+if not login or login == "default":
+    raise SystemExit("set USERNAME=<login> in .env first")
 key = Ed25519PrivateKey.generate()
 priv = key.private_bytes(
     serialization.Encoding.Raw,
@@ -167,7 +191,7 @@ curl -s -X POST "http://${BOC_AUTH_HOST:-127.0.0.1}:${BOC_AUTH_PORT:-8000}/api/a
 # -> {"status":"ok","username":"<login>"}
 ```
 
-Error codes, the full failure-mode table, and the security rationale are in [`docs/AUTH_EN.md`](docs/AUTH_EN.md).
+Error codes, the full failure-mode table, and the security rationale: [`docs/AUTH_EN.md`](docs/AUTH_EN.md) · [русская версия](docs/AUTH_RU.md). Back to [Quick setup](#quick-setup).
 
 ### 7. Verify and play
 
@@ -248,10 +272,11 @@ python3 client/client.py -f 1
 
 `main` stays clean: PRs upstream don't touch your `.pub`. Your branch is your registration.
 
-Deep references:
-- [`docs/AUTH_EN.md`](docs/AUTH_EN.md) — the auth flow, error codes, security notes
-- [`docs/API_EN.md`](docs/API_EN.md) — the wire format (REST + WebSocket) and `state` consumption examples
-- [`docs/RULES_EN.md`](docs/RULES_EN.md) — game mechanics and anti-patterns
+Deep references (Russian mirrors linked):
+- [`docs/AUTH_EN.md`](docs/AUTH_EN.md) ([RU](docs/AUTH_RU.md)) — auth flow, error codes, security; complements [§6](#6-sign-up-with-the-server) and [Quick setup](#quick-setup)
+- [`docs/API_EN.md`](docs/API_EN.md) ([RU](docs/API_RU.md)) — wire format (REST + WebSocket) and `state` examples
+- [`docs/RULES_EN.md`](docs/RULES_EN.md) ([RU](docs/RULES_RU.md)) — game mechanics and anti-patterns
+- [`docs/README_RU.md`](docs/README_RU.md) — full Russian install guide ([back to English Quick setup](README.md#quick-setup))
 
 ---
 

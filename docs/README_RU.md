@@ -1,6 +1,6 @@
 # bocbot
 
-[English](https://github.com/battleofcode/bocbot/blob/main/README.md) | **[Русский](https://github.com/battleofcode/bocbot/blob/main/docs/README_RU.md)**
+[English](../README.md) ([Quick setup](../README.md#quick-setup)) | **[Русский](README_RU.md)** ([краткая установка](#краткая-установка))
 
 Шаблон игрока для **Battle of Code** — многопользовательской игры на захват территории, где каждый запускает своего бота (или играет вручную из терминала).
 
@@ -27,9 +27,29 @@
 
 ---
 
+## Краткая установка
+
+Минимум действий от нуля до игры. Везде `<login>` — ваш GitHub-логин.
+
+| # | Действие |
+|---|----------|
+| 1 | Форк и клон ([§1](#1-форкните-и-склонируйте)) |
+| 2 | `pip install -r requirements.txt` ([§2](#2-установите-зависимости-python)) |
+| 3 | `cp .env.example .env` и `USERNAME=<login>` ([§3](#3-настройте-env)) |
+| 4 | `python3 tools/signup.py` — ключи, `git push`, REST signup ([§6.1](#61-скриптом-рекомендуется)) |
+| 5 | `./play.sh` или `python3 bot.py` ([§7](#7-проверьте-и-играйте)) |
+
+**Только ключи** (без регистрации на сервере): после шага 3 — `python3 tools/keygen.py` ([§4.1](#41-скриптом-рекомендуется)). Берёт `USERNAME` из `.env`, а не `$USERNAME` ОС (на Windows это разные значения).
+
+**Руками / проверить себе:** [генерация ключей](#42-или-руками) · [signup через curl](#62-или-руками) · [`docs/AUTH_RU.md`](AUTH_RU.md) (ошибки, безопасность).
+
+**Подробно:** [Quickstart §1–7](#quickstart) ниже · [English — Quick setup](../README.md#quick-setup) · [English — full Quickstart](../README.md#quickstart)
+
+---
+
 ## Quickstart
 
-Замените `<login>` на ваш GitHub-логин везде ниже.
+Замените `<login>` на ваш GitHub-логин везде ниже. Сначала смотрите [краткую установку](#краткая-установка); здесь — полная версия со скриптами и ручными альтернативами.
 
 ### 1. Форкните и склонируйте
 
@@ -71,9 +91,10 @@ $EDITOR .env
 
 ```bash
 python3 tools/keygen.py
+# или явно: python3 tools/keygen.py <login>
 ```
 
-Создаёт `keys/<login>.key` и `keys/<login>.pub`. Идемпотентно — если приватный ключ уже существует, он переиспользуется, а публичный регенерируется из него.
+Без аргумента читает `USERNAME` из `.env` (не `$USERNAME` Windows). Создаёт `keys/<login>.key` и `keys/<login>.pub`. Идемпотентно — если приватный ключ уже есть, переиспользуется; публичный пересобирается из него. Отклоняет placeholder вроде `default`.
 
 #### 4.2. ИЛИ руками
 
@@ -82,9 +103,12 @@ python3 tools/keygen.py
 ```bash
 python3 - <<'PY'
 import os, pathlib
+from dotenv import dotenv_values
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-login = os.environ.get("USERNAME")
+login = (dotenv_values(".env").get("USERNAME") or "").strip()
+if not login or login == "default":
+    raise SystemExit("сначала задайте USERNAME=<login> в .env")
 key = Ed25519PrivateKey.generate()
 priv = key.private_bytes(
     serialization.Encoding.Raw,
@@ -167,7 +191,7 @@ curl -s -X POST "http://${BOC_AUTH_HOST:-127.0.0.1}:${BOC_AUTH_PORT:-8000}/api/a
 # -> {"status":"ok","username":"<login>"}
 ```
 
-Коды ошибок, полная таблица failure-режимов и обоснование безопасности — в [`docs/AUTH_RU.md`](AUTH_RU.md).
+Коды ошибок, таблица failure-режимов и безопасность: [`docs/AUTH_RU.md`](AUTH_RU.md) · [English](AUTH_EN.md). Назад к [краткой установке](#краткая-установка).
 
 ### 7. Проверьте и играйте
 
@@ -248,10 +272,11 @@ python3 client/client.py -f 1
 
 `main` остаётся чистой: апстрим-PR не трогают ваш `.pub`. Ваша ветка — ваша регистрация.
 
-Глубокие ссылки:
-- [`docs/AUTH_RU.md`](AUTH_RU.md) — поток авторизации, коды ошибок, заметки по безопасности
-- [`docs/API_RU.md`](API_RU.md) — wire-формат (REST + WebSocket) и примеры потребления `state`
-- [`docs/RULES_RU.md`](RULES_RU.md) — игровая механика и анти-паттерны
+Глубокие ссылки (английские зеркала в скобках):
+- [`docs/AUTH_RU.md`](AUTH_RU.md) ([EN](AUTH_EN.md)) — авторизация; дополняет [§6](#6-регистрация-на-сервере) и [краткую установку](#краткая-установка)
+- [`docs/API_RU.md`](API_RU.md) ([EN](API_EN.md)) — wire-формат и примеры `state`
+- [`docs/RULES_RU.md`](RULES_RU.md) ([EN](RULES_EN.md)) — механика и анти-паттерны
+- [`README.md`](../README.md#quick-setup) — английская краткая установка · [полный Quickstart](../README.md#quickstart)
 
 ---
 

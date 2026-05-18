@@ -11,19 +11,17 @@ Player template for **Battle of Code** — a multiplayer territory-capture game 
 - Three small `tools/` scripts that register you with the game server.
 - Docs explaining exactly what the wire format and auth look like.
 
-Nothing here phones home, nothing here is obfuscated. Each setup step has a one-command script form (the path of least resistance) **and** a hand-written form so you can verify it yourself. Use the script the first time. Read the `OR by hand` block whenever you want to know what the script is actually doing.
+Every setup step has a one-command script form (recommended) and an equivalent manual form documented in [`docs/AUTH_EN.md`](docs/AUTH_EN.md) §3. Use the script the first time; read the docs when you want to see what it does under the hood.
 
 ---
 
-## What registration actually is
+## Registration in three steps
 
-Three things, no more:
+1. **Generate keys.** `tools/keygen.py` creates `keys/<login>.key` (private, local) and `keys/<login>.pub` (public, safe to commit).
+2. **Push the public key to your fork.** Put `keys/<login>.pub` on a branch named `<login>` in your GitHub fork — the server reads it from there.
+3. **Sign up on the server.** `tools/signup.py` sends your login; the server downloads the public key from your branch, hands you a nonce, you sign it with the private key.
 
-1. An **Ed25519 keypair** on your disk. Private (`.key`) stays local. Public (`.pub`) is hex, 64 chars, one line.
-2. A **branch in your GitHub fork** named after your login. On that branch sits `keys/<login>.pub`. The server reads it once.
-3. A **signed challenge**. The server gives you a random nonce, you sign it with the private key, the server verifies against the public key it just fetched from GitHub.
-
-That's the whole trust model. No password, no JWT, no cookie. Every game session repeats step 3 with a fresh signed `hello` frame.
+That's the whole trust model — no passwords, no tokens, no cookies. Full details and the manual flow: [`docs/AUTH_EN.md`](docs/AUTH_EN.md).
 
 ---
 
@@ -39,9 +37,9 @@ Minimum path from zero to playing. Replace `<login>` with your GitHub login.
 | 4 | `python3 tools/signup.py` — keys, `git push`, REST signup in one go ([§6.1](#61-with-the-script-recommended)) |
 | 5 | `./play.sh` or `python3 bot.py` ([§7](#7-verify-and-play)) |
 
-**Keys only** (no server signup yet): after step 3, run `python3 tools/keygen.py` ([§4.1](#41-with-the-script-recommended)). It reads `USERNAME` from `.env`, not the OS `$USERNAME` (on Windows those differ).
+**Keys only** (no server signup yet): after step 3, run `python3 tools/keygen.py` ([§4](#4-generate-an-ed25519-keypair)). It reads `USERNAME` from `.env`, not the OS `$USERNAME` (on Windows those differ).
 
-**Manual / verify yourself:** [generate keys by hand](#42-or-by-hand) · [signup with curl](#62-or-by-hand) · [`docs/AUTH_EN.md`](docs/AUTH_EN.md) (errors, security).
+**Manual / verify yourself:** [`docs/AUTH_EN.md`](docs/AUTH_EN.md) §3 — generate keys without `tools/keygen.py` and run signup with `curl`. Same section covers error codes and security notes.
 
 **Full walkthrough:** [Quickstart §1–7](#quickstart) below · [Русский — краткая установка](docs/README_RU.md#краткая-установка) · [Русский — полный Quickstart](docs/README_RU.md#quickstart)
 
@@ -49,7 +47,7 @@ Minimum path from zero to playing. Replace `<login>` with your GitHub login.
 
 ## Quickstart
 
-Replace `<login>` with your GitHub login everywhere. Prefer the [Quick setup](#quick-setup) table above; this section is the detailed version with script and hand alternatives.
+Replace `<login>` with your GitHub login everywhere. Prefer the [Quick setup](#quick-setup) table above; this section walks through the same steps with explanations. Manual / by-hand alternatives live in [`docs/AUTH_EN.md`](docs/AUTH_EN.md) §3.
 
 ### 1. Fork & clone
 
@@ -87,8 +85,6 @@ Set `USERNAME=<login>`. Tweak `BOC_AUTH_HOST` / `BOC_GAME_HOST` if the server is
 
 You need two files in `keys/`: a private `.key` (32 raw bytes, mode `0600`, **never commit**) and a public `.pub` (hex, 64 chars, **safe to commit**).
 
-#### 4.1. With the script (recommended)
-
 ```bash
 python3 tools/keygen.py
 # or explicitly: python3 tools/keygen.py <login>
@@ -96,38 +92,7 @@ python3 tools/keygen.py
 
 Reads `USERNAME` from `.env` when called without an argument (ignores the OS `$USERNAME` on Windows). Creates `keys/<login>.key` and `keys/<login>.pub`. Idempotent — if the private key already exists, it's reused and the public key is regenerated from it. Refuses placeholder values such as `default`.
 
-#### 4.2. OR by hand
-
-Same two files, no extra tool:
-
-```bash
-python3 - <<'PY'
-import os, pathlib
-from dotenv import dotenv_values
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-login = (dotenv_values(".env").get("USERNAME") or "").strip()
-if not login or login == "default":
-    raise SystemExit("set USERNAME=<login> in .env first")
-key = Ed25519PrivateKey.generate()
-priv = key.private_bytes(
-    serialization.Encoding.Raw,
-    serialization.PrivateFormat.Raw,
-    serialization.NoEncryption(),
-)
-pub = key.public_key().public_bytes(
-    serialization.Encoding.Raw, serialization.PublicFormat.Raw,
-)
-pathlib.Path("keys").mkdir(exist_ok=True)
-pathlib.Path(f"keys/{login}.key").write_bytes(priv)
-os.chmod(f"keys/{login}.key", 0o600)
-pathlib.Path(f"keys/{login}.pub").write_text(f"# bocbot key for {login}\n{pub.hex()}\n")
-print("private:", f"keys/{login}.key", "(mode 0600)")
-print("public :", f"keys/{login}.pub", pub.hex())
-PY
-```
-
-That's literally what `tools/keygen.py` does — read [`tools/keygen.py`](tools/keygen.py) (~70 LOC) if you want to verify line-by-line.
+Want to do it without the script? See [`docs/AUTH_EN.md`](docs/AUTH_EN.md) §3.1 for the equivalent Python heredoc.
 
 ### 5. Push the public key to your branch
 

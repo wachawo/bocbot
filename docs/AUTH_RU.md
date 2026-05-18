@@ -125,7 +125,44 @@ Response **200**:
 
 ## 3. Попробуйте руками
 
-Python-однострочник ниже — минимум для подписания nonce приватным ключом с диска. Полная последовательность также в корневом [`README.md`](README_RU.md).
+Если хочется выполнить регистрацию по шагам, без `tools/keygen.py` и `tools/signup.py`, — вот сами кирпичики.
+
+### 3.1. Сгенерировать keypair без `tools/keygen.py`
+
+Читает `USERNAME` из `.env` (как и скрипт), пишет те же два файла. Из зависимостей нужны только `cryptography` и `python-dotenv`.
+
+```bash
+python3 - <<'PY'
+import os, pathlib
+from dotenv import dotenv_values
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+login = (dotenv_values(".env").get("USERNAME") or "").strip()
+if not login or login == "default":
+    raise SystemExit("сначала задайте USERNAME=<login> в .env")
+key = Ed25519PrivateKey.generate()
+priv = key.private_bytes(
+    serialization.Encoding.Raw,
+    serialization.PrivateFormat.Raw,
+    serialization.NoEncryption(),
+)
+pub = key.public_key().public_bytes(
+    serialization.Encoding.Raw, serialization.PublicFormat.Raw,
+)
+pathlib.Path("keys").mkdir(exist_ok=True)
+pathlib.Path(f"keys/{login}.key").write_bytes(priv)
+os.chmod(f"keys/{login}.key", 0o600)
+pathlib.Path(f"keys/{login}.pub").write_text(f"# bocbot key for {login}\n{pub.hex()}\n")
+print("private:", f"keys/{login}.key", "(mode 0600)")
+print("public :", f"keys/{login}.pub", pub.hex())
+PY
+```
+
+Это буквально то, что делает [`tools/keygen.py`](../tools/keygen.py) (~70 строк) — можно прочитать построчно и убедиться.
+
+### 3.2. Регистрация на сервере
+
+Python-однострочник ниже — минимум для подписания nonce приватным ключом с диска.
 
 ```bash
 # Шаг 1: запросить challenge

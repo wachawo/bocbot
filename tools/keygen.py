@@ -24,15 +24,18 @@ import os
 import sys
 import traceback
 from pathlib import Path
-from typing import Tuple
+from typing import Optional, Tuple
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from dotenv import dotenv_values
 
 logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+ENV_PATH  = REPO_ROOT / ".env"
 KEYS_DIR  = REPO_ROOT / "keys"
+RESERVED_NAMES = {"default", "anon", "anonymous", "admin", "root", ""}
 
 
 def keypair_paths(username: str) -> Tuple[Path, Path]:
@@ -77,6 +80,16 @@ def load_or_generate(username: str) -> Tuple[Ed25519PrivateKey, Path, Path, bool
     return key, priv_path, pub_path, True
 
 
+def resolve_username(cli_username: Optional[str]) -> str:
+    """CLI arg wins; otherwise USERNAME from ``.env`` (not OS ``$USERNAME``)."""
+    if cli_username and cli_username.strip():
+        return cli_username.strip()
+    if not ENV_PATH.exists():
+        return ""
+    env = dotenv_values(ENV_PATH)
+    return (env.get("USERNAME") or "").strip()
+
+
 def generate(username: str) -> dict:
     """Library entry point. Returns a small report dict."""
     key, priv_path, pub_path, created_new = load_or_generate(username)
@@ -96,18 +109,20 @@ def main() -> int:
     parser.add_argument(
         "username",
         nargs="?",
-        default=os.environ.get("USERNAME") or "",
-        help="GitHub login (default: $USERNAME from environment or .env)",
+        default=None,
+        help="GitHub login (default: USERNAME from .env)",
     )
     args = parser.parse_args()
-    if not args.username or args.username == "default":
+    username = resolve_username(args.username)
+    if not username or username.lower() in RESERVED_NAMES:
         logger.error(
-            "username is required (got %r). Pass it as an argument or set USERNAME in .env.",
-            args.username,
+            "username is required (got %r). Pass it as an argument or set USERNAME in .env "
+            "(not the placeholder 'default').",
+            username or args.username,
         )
         return 1
     try:
-        report = generate(args.username)
+        report = generate(username)
     except Exception as exc:
         logger.error(f"keygen failed: {type(exc).__name__}: {exc}\n{traceback.format_exc()}")
         return 2

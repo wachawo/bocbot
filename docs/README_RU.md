@@ -191,6 +191,8 @@ git checkout main
 
 `./play.sh` открывает Rich UI в терминале. Адрес и логин берутся из `.env` (`BOC_GAME_HOST`, `BOC_GAME_PORT`, `USERNAME`); CLI-флаги `client/client.py` имеют приоритет.
 
+Работает на Linux, macOS и Windows (для Windows предпочтителен Windows Terminal, а не старый `conhost`; Git Bash / MINGW64 тоже подходит). На любой ОС клиент можно запустить напрямую: `python3 client/client.py`.
+
 
 | Клавиша              | Действие |
 | -------------------- | -------- |

@@ -11,7 +11,10 @@ from typing import Optional
 
 from dotenv import load_dotenv, find_dotenv
 
-load_dotenv(find_dotenv())
+# override=True so the project's .env wins over any pre-existing OS variable.
+# Critical on Windows, where $USERNAME is the OS account name (e.g. "matata")
+# and would otherwise mask the GitHub login in .env (e.g. "matata13").
+load_dotenv(find_dotenv(), override=True)
 
 TRUE_VALUES = ("1", "true", "yes", "on", "enabled")
 

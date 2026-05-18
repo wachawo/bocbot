@@ -185,7 +185,7 @@ def run() -> int:
         return 4
 
     print()
-    logger.info("✓ Signed up successfully. You can now run ./play.sh or python3 bot.py.")
+    logger.info("✓ Signed up successfully. You can now run python3 client/client.py or python3 bot.py.")
     return 0
 
 

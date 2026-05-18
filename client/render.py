@@ -404,7 +404,7 @@ def build_header(me: Dict[str, Any], name: str,
 # and only replaces it on a new state message). Rebuilding the panel costs
 # 10-40 ms on a 200×100 view — caching halves CPU when refresh_per_second
 # pings come faster than state messages arrive.
-_MAP_CACHE: Dict[str, Any] = {"key": None, "panel": None}
+MAP_CACHE: Dict[str, Any] = {"key": None, "panel": None}
 
 
 def build_map(
@@ -497,8 +497,8 @@ def build_map(
         memory.map_w if memory else 0,
         memory.map_h if memory else 0,
     )
-    if _MAP_CACHE.get("key") == cache_key and _MAP_CACHE.get("panel") is not None:
-        return _MAP_CACHE["panel"]
+    if MAP_CACHE.get("key") == cache_key and MAP_CACHE.get("panel") is not None:
+        return MAP_CACHE["panel"]
 
     # Player markers — only those whose world coord lands in our window.
     pmap: Dict[Tuple[int, int], Dict[str, Any]] = {}
@@ -768,8 +768,8 @@ def build_map(
     else:
         title = f"map (pack {pack_x}×{pack_y} cell {cell_w}×{cell_h})"
     panel = Panel(body, border_style="bright_blue", padding=(0, 0), title=title)
-    _MAP_CACHE["key"] = cache_key
-    _MAP_CACHE["panel"] = panel
+    MAP_CACHE["key"] = cache_key
+    MAP_CACHE["panel"] = panel
     return panel
 
 

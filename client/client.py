@@ -204,7 +204,7 @@ def run_session(cfg: client_config.ClientConfig) -> int:
     DOUBLE_INTR_SEC = 2.0
     intr_deadline = [0.0]
 
-    def sigint_handler(_signum, _frame):
+    def sigint_handler(signum, frame):
         t = time.monotonic()
         if t < intr_deadline[0]:
             raise KeyboardInterrupt()

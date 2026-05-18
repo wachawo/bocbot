@@ -149,7 +149,7 @@ def find_glyph(rows: List[List[Tuple[str, str, str]]], glyph: str
     """Return (row_idx, col_idx) for every cell whose char matches `glyph`."""
     out = []
     for r, row in enumerate(rows):
-        for c, (ch, _fg, _bg) in enumerate(row):
+        for c, (ch, fg, bg) in enumerate(row):
             if ch == glyph:
                 out.append((r, c))
     return out
@@ -158,7 +158,7 @@ def find_glyph(rows: List[List[Tuple[str, str, str]]], glyph: str
 def collect_bgs(rows: List[List[Tuple[str, str, str]]]) -> List[str]:
     bgs = []
     for row in rows:
-        for (_ch, _fg, bg) in row:
+        for (ch, fg, bg) in row:
             if bg != "default":
                 bgs.append(bg)
     return bgs
@@ -170,7 +170,7 @@ def collect_colors(rows: List[List[Tuple[str, str, str]]]) -> List[str]:
     that only scans bgs misses zone fills at edges."""
     out = []
     for row in rows:
-        for (_ch, fg, bg) in row:
+        for (ch, fg, bg) in row:
             if fg != "default":
                 out.append(fg)
             if bg != "default":
@@ -203,7 +203,7 @@ def test_player_marker_present():
     # exactly one bright_white × exists.
     self_count = 0
     for row in rows:
-        for (ch, fg, _bg) in row:
+        for (ch, fg, bg) in row:
             if ch == "×" and fg == "bright_white":
                 self_count += 1
     check("player_marker_present",
@@ -220,7 +220,7 @@ def test_no_enemy_marker_when_no_enemy_in_view():
     rows, _ = render_scene(me, view, [], mem)
     enemy_xs = 0
     for row in rows:
-        for (ch, fg, _bg) in row:
+        for (ch, fg, bg) in row:
             if ch == "×" and fg != "bright_white":
                 enemy_xs += 1
     check("no_enemy_marker_in_fog",
@@ -255,8 +255,8 @@ def test_view_and_fog_use_different_bg_for_same_pid():
     view = {"x0": 30, "y0": 30, "w": 41, "h": 41, "zone": [], "trail": []}
     rows, _ = render_scene(me, view, [], mem)
     cols = collect_colors(rows)
-    grey_seen = any(_is_grey(c) for c in cols)
-    green_seen = any(_is_green(c) for c in cols)
+    grey_seen = any(is_grey(c) for c in cols)
+    green_seen = any(is_green(c) for c in cols)
     check("fog_uses_grey_palette",
           grey_seen,
           f"no grey-shaded colour seen; sample={sorted(set(cols))[:12]}")
@@ -265,7 +265,7 @@ def test_view_and_fog_use_different_bg_for_same_pid():
           f"no green colour seen; sample={sorted(set(cols))[:12]}")
 
 
-def _is_grey(token: str) -> bool:
+def is_grey(token: str) -> bool:
     # 256-color greys are indexes 232..255 (24-step greyscale ramp), plus
     # any 16+36r+6g+b where r==g==b (cube diagonal).
     if token.startswith("c"):
@@ -283,7 +283,7 @@ def _is_grey(token: str) -> bool:
     return False
 
 
-def _is_green(token: str) -> bool:
+def is_green(token: str) -> bool:
     if token in ("green", "bright_green"):
         return True
     if token.startswith("c"):
@@ -328,7 +328,7 @@ def test_world_static_between_me_y_and_me_y_plus_2():
     def coloured_rows(rs):
         out = []
         for r_idx, row in enumerate(rs):
-            for (_ch, fg, bg) in row:
+            for (ch, fg, bg) in row:
                 if fg in STRIP_COLOURS or bg in STRIP_COLOURS:
                     out.append(r_idx)
                     break
@@ -362,10 +362,10 @@ def test_no_glyph_flicker_on_single_step():
         rows, _ = render_scene(me, view, [], mem)
         glyphs = set()
         for row in rows:
-            for (ch, _fg, bg) in row:
-                if _is_green(bg):
+            for (ch, fg, bg) in row:
+                if is_green(bg):
                     glyphs.add(ch)
-                if _is_green(_fg) and ch in ("▀", "▄"):
+                if is_green(fg) and ch in ("▀", "▄"):
                     glyphs.add(ch)
         glyph_sets.append(glyphs)
     # Each pair of consecutive renders should share at least one glyph kind.
@@ -441,7 +441,7 @@ def test_own_trail_visible_in_fog():
     rows, _ = render_scene(me, view, [], mem)
     own_dots = 0
     for row in rows:
-        for (ch, fg, _bg) in row:
+        for (ch, fg, bg) in row:
             if ch == "·" and fg == "c160":   # c160 = bg_for(pid=1)
                 own_dots += 1
     check("own_trail_visible_in_fog",
@@ -463,7 +463,7 @@ def test_no_enemy_trail_in_fog_memory():
     rows, _ = render_scene(me, view, [], mem)
     enemy_dots = 0
     for row in rows:
-        for (ch, fg, _bg) in row:
+        for (ch, fg, bg) in row:
             # Enemy trail would render as `·` with green fg (pid 2 colour).
             if ch == "·" and fg in ("green", "c34", "bright_green", "c46"):
                 enemy_dots += 1
@@ -493,7 +493,7 @@ def test_one_step_shifts_one_char():
                                screen_cells_w=60, screen_cells_h=60)
         top = None
         for r_idx, row in enumerate(rows):
-            for (_ch, fg, bg) in row:
+            for (ch, fg, bg) in row:
                 if fg in STRIP_COLOURS or bg in STRIP_COLOURS:
                     top = r_idx
                     break
@@ -525,7 +525,7 @@ def test_row_widths_consistent():
     rows, _ = render_scene(me, view, [], mem)
     widths = []
     for row in rows:
-        w = sum(visual_width(ch) for (ch, _fg, _bg) in row)
+        w = sum(visual_width(ch) for (ch, fg, bg) in row)
         if w > 0:
             widths.append(w)
     distinct = set(widths)
@@ -561,7 +561,7 @@ def test_live_view_floor_is_lighter_than_fog():
     rows, _ = render_scene(me, view, [], mem)
     view_floor = 0
     for row in rows:
-        for (_ch, _fg, bg) in row:
+        for (ch, fg, bg) in row:
             if bg == "c238":
                 view_floor += 1
     check("live_view_floor_bright",

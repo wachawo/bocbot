@@ -56,7 +56,7 @@ def restore_terminal(saved: Optional[list]) -> None:
         pass
 
 
-def _drain_raw(fd: int, timeout: float) -> bytes:
+def drain_raw(fd: int, timeout: float) -> bytes:
     """Wait up to `timeout` for the first byte, then drain everything available
     in a single non-blocking ``os.read``. Bypasses Python's text buffer."""
     rlist, _, _ = select.select([fd], [], [], timeout)
@@ -84,7 +84,7 @@ def read_keys(timeout: float = 0.0) -> List[str]:
     """
     if not is_tty():
         return []
-    raw = _drain_raw(sys.stdin.fileno(), timeout)
+    raw = drain_raw(sys.stdin.fileno(), timeout)
     keys: List[str] = []
     i = 0
     while i < len(raw):
